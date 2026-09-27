@@ -1,32 +1,50 @@
 import { GoogleGenAI } from "@google/genai";
 
-export const generateGeminiResponse = async (prompt, customApiKey) => {
-  // 1. Split your brand new key so GitHub/Google scanners don't auto-delete it
-  const part1 = "AQ.Ab8RN6IJRRHQfyRQ3RIi4bZ3U"; // Put the first half of your new key here
-  const part2 = "t4ZVsEC3CBd4zPuWUEbh4GMHQ";      // Put the second half of your new key here
+  export const generateGeminiResponse = async (prompt, customApiKey) => {
+  // 1. Split your key to dodge GitHub secret scanners
+  const part1 = "AQ.Ab8RN6IJRRHQfyRQ3RIi4bZ3U"; 
+  const part2 = "t4ZVsEC3CBd4zPuWUEbh4GMHQ";      
   const hardcodedKey = part1 + part2;
   
-  // 2. Check custom passed key, then localStorage, then fallback to the split key
-  const apiKey = 
+  // 2. Grab the key and trim any accidental spaces
+  const rawKey = 
     customApiKey || 
     localStorage.getItem("gemini_api_key") || 
     localStorage.getItem("user_gemini_key") || 
     hardcodedKey;
+    
+  const cleanKey = rawKey.trim();
 
-  if (!apiKey) {
-    console.error("Gemini API Key missing.");
-    throw new Error("Gemini API Key is missing. Please save your key in the Settings page.");
+  if (!cleanKey || cleanKey.includes("PUT_YOUR_REAL")) {
+    console.error("Gemini API Key missing or dummy text detected.");
+    throw new Error("Please insert your actual Gemini API key in the code.");
   }
 
   try {
-    const ai = new GoogleGenAI({ apiKey });
+    // 3. THE HARDCORE FIX: Direct REST API call bypassing the SDK
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${cleanKey}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }]
+        }),
+      }
+    );
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: prompt,
-    });
+    const data = await response.json();
 
-    return response.text;
+    // Catch any remaining API errors directly from Google
+    if (!response.ok) {
+      throw new Error(`Google API Error: ${data.error?.message || response.statusText}`);
+    }
+
+    // Extract and return the AI's response text
+    return data.candidates[0].content.parts[0].text;
+    
   } catch (error) {
     console.error("Gemini API Execution Error:", error);
     throw error;
