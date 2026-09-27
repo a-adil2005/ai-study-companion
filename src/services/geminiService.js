@@ -1,5 +1,3 @@
-import { GoogleGenAI } from "@google/genai";
-
   export const generateGeminiResponse = async (prompt, customApiKey) => {
   // 1. Split your key to dodge GitHub secret scanners
   const part1 = "AQ.Ab8RN6IJRRHQfyRQ3RIi4bZ3U"; 
